@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            width: 100%;
+            max-width: 1200px;
+            margin: 20px auto;
+        }
+        
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        
+        .admin-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .action-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            transition: transform 0.3s;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        
+        .action-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .action-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            color: #2196F3;
+        }
+        
+        .logout-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 30px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .logout-btn:hover {
+            background-color: #c0392b;
+        }
+        
+        /* Management Sections */
+        .management-section {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .back-to-dashboard {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        
+        .back-to-dashboard:hover {
+            background-color: #2980b9;
+        }
+        
+        /* Store Owner Registration Form */
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        /* Store List */
+        .store-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .store-item {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            border: 1px solid #eee;
+        }
+        
+        .store-item h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Admin Dashboard -->
+        <div id="admin-dashboard">
+            <h1>Admin Portal</h1>
+            <h2>Welcome, Administrator</h2>
+            
+            <div class="admin-actions">
+                <div class="action-card" id="manage-store-owners-btn">
+                    <div class="action-icon">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <h3>Register Store Owner</h3>
+                    <p>Create accounts for new canteen store owners</p>
+                </div>
+                
+                <div class="action-card" id="manage-stores-btn">
+                    <div class="action-icon">
+                        <i class="fas fa-store"></i>
+                    </div>
+                    <h3>Manage Stores</h3>
+                    <p>View and manage all canteen stores</p>
+                </div>
+                
+                <div class="action-card">
+                    <div class="action-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>Manage Students</h3>
+                    <p>View and manage student accounts</p>
+                </div>
+                
+                <div class="action-card">
+                    <div class="action-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <h3>View Reports</h3>
+                    <p>Generate usage and sales reports</p>
+                </div>
+            </div>
+            
+            <button class="logout-btn" id="logout-btn">Logout</button>
+        </div>
+        
+        <!-- Store Owner Registration Section -->
+        <div id="store-owner-registration" class="management-section">
+            <button class="back-to-dashboard" id="back-to-dashboard-owners">← Back to Dashboard</button>
+            <h2>Register New Store Owner</h2>
+            
+            <form id="store-owner-form">
+                <div class="form-group">
+                    <label for="owner-name">Full Name</label>
+                    <input type="text" id="owner-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="owner-email">Email</label>
+                    <input type="email" id="owner-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="owner-username">Username</label>
+                    <input type="text" id="owner-username" required>
+                </div>
+                <div class="form-group">
+                    <label for="owner-password">Password</label>
+                    <input type="password" id="owner-password" required>
+                </div>
+                <div class="form-group">
+                    <label for="store-name">Store Name</label>
+                    <input type="text" id="store-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="store-description">Store Description</label>
+                    <textarea id="store-description" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Register Store Owner</button>
+            </form>
+        </div>
+        
+        <!-- Store Management Section -->
+        <div id="store-management" class="management-section">
+            <button class="back-to-dashboard" id="back-to-dashboard-stores">← Back to Dashboard</button>
+            <h2>Manage Stores</h2>
+            
+            <div class="store-list" id="admin-store-list">
+                <!-- Stores will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check if admin is logged in
+        if (sessionStorage.getItem('adminLoggedIn') !== 'true') {
+            window.location.href = 'admin-login.html';
+        }
+
+        // DOM Elements
+        const adminDashboard = document.getElementById('admin-dashboard');
+        const registrationSection = document.getElementById('store-owner-registration');
+        const storeManagementSection = document.getElementById('store-management');
+        const manageStoreOwnersBtn = document.getElementById('manage-store-owners-btn');
+        const manageStoresBtn = document.getElementById('manage-stores-btn');
+        const backToDashboardOwnersBtn = document.getElementById('back-to-dashboard-owners');
+        const backToDashboardStoresBtn = document.getElementById('back-to-dashboard-stores');
+        const logoutBtn = document.getElementById('logout-btn');
+        const registrationForm = document.getElementById('store-owner-form');
+        const adminStoreList = document.getElementById('admin-store-list');
+
+        // Show registration form
+        manageStoreOwnersBtn.addEventListener('click', () => {
+            adminDashboard.style.display = 'none';
+            registrationSection.style.display = 'block';
+        });
+
+        // Show store management
+        manageStoresBtn.addEventListener('click', () => {
+            adminDashboard.style.display = 'none';
+            storeManagementSection.style.display = 'block';
+            renderAdminStoreList();
+        });
+
+        // Back to dashboard from registration
+        backToDashboardOwnersBtn.addEventListener('click', () => {
+            registrationSection.style.display = 'none';
+            adminDashboard.style.display = 'block';
+        });
+
+        // Back to dashboard from store management
+        backToDashboardStoresBtn.addEventListener('click', () => {
+            storeManagementSection.style.display = 'none';
+            adminDashboard.style.display = 'block';
+        });
+
+        // Logout
+        logoutBtn.addEventListener('click', () => {
+            sessionStorage.removeItem('adminLoggedIn');
+            window.location.href = 'index.html';
+        });
+
+        // Handle store owner registration
+        registrationForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            // Get form values
+            const ownerData = {
+                name: document.getElementById('owner-name').value,
+                email: document.getElementById('owner-email').value,
+                username: document.getElementById('owner-username').value,
+                password: document.getElementById('owner-password').value,
+                storeName: document.getElementById('store-name').value,
+                storeDescription: document.getElementById('store-description').value,
+                storeId: generateStoreId()
+            };
+            
+            // Save store owner
+            const storeOwners = JSON.parse(localStorage.getItem('storeOwners')) || [];
+            if (storeOwners.some(owner => owner.username === ownerData.username)) {
+                alert('Username already exists!');
+                return;
+            }
+            
+            storeOwners.push(ownerData);
+            localStorage.setItem('storeOwners', JSON.stringify(storeOwners));
+            
+            // Create new store
+            const newStore = {
+                id: ownerData.storeId,
+                name: ownerData.storeName,
+                description: ownerData.storeDescription,
+                status: "open",
+                serving: 0,
+                menu: []
+            };
+            
+            const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
+            canteenStores.push(newStore);
+            localStorage.setItem('canteenStores', JSON.stringify(canteenStores));
+            
+            alert(`Successfully registered ${ownerData.name} as owner of ${ownerData.storeName}`);
+            registrationForm.reset();
+            
+            // Return to dashboard
+            registrationSection.style.display = 'none';
+            adminDashboard.style.display = 'block';
+        });
+
+        // Render store list for admin
+        function renderAdminStoreList() {
+            const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
+            const storeOwners = JSON.parse(localStorage.getItem('storeOwners')) || [];
+            
+            adminStoreList.innerHTML = '';
+            
+            if (canteenStores.length === 0) {
+                adminStoreList.innerHTML = '<p>No stores registered yet.</p>';
+                return;
+            }
+            
+            canteenStores.forEach(store => {
+                const owner = storeOwners.find(o => o.storeId === store.id);
+                const storeItem = document.createElement('div');
+                storeItem.className = 'store-item';
+                storeItem.innerHTML = `
+                    <h3>${store.name}</h3>
+                    <p>${store.description}</p>
+                    <p>Status: ${store.status}</p>
+                    <p>Owner: ${owner ? owner.name : 'Not assigned'}</p>
+                    <button class="btn btn-danger delete-store" data-store-id="${store.id}">
+                        Delete Store
+                    </button>
+                `;
+                adminStoreList.appendChild(storeItem);
+            });
+            
+            // Add event listeners to delete buttons
+            document.querySelectorAll('.delete-store').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const storeId = parseInt(e.target.dataset.storeId);
+                    deleteStore(storeId);
+                });
+            });
+        }
+
+        // Delete store function
+        function deleteStore(storeId) {
+            if (!confirm('Are you sure you want to delete this store? This will also remove all associated menu items.')) {
+                return;
+            }
+            
+            // Remove from canteenStores
+            let canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
+            canteenStores = canteenStores.filter(store => store.id !== storeId);
+            localStorage.setItem('canteenStores', JSON.stringify(canteenStores));
+            
+            // Remove owner association (but keep the owner account)
+            let storeOwners = JSON.parse(localStorage.getItem('storeOwners')) || [];
+            storeOwners = storeOwners.map(owner => {
+                if (owner.storeId === storeId) {
+                    const {storeId, ...rest} = owner;
+                    return rest;
+                }
+                return owner;
+            });
+            localStorage.setItem('storeOwners', JSON.stringify(storeOwners));
+            
+            alert('Store deleted successfully!');
+            renderAdminStoreList();
+        }
+
+        // Generate unique store ID
+        function generateStoreId() {
+            const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
+            return canteenStores.length > 0 ? Math.max(...canteenStores.map(store => store.id)) + 1 : 1;
+        }
+    </script>
+</body>
+</html>

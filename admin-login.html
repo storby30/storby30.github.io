@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            width: 100%;
+            max-width: 500px;
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        .submit-btn {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        
+        .submit-btn:hover {
+            background-color: #0b7dda;
+        }
+        
+        .back-btn {
+            background-color: #f44336;
+            margin-top: 10px;
+        }
+        
+        .back-btn:hover {
+            background-color: #d32f2f;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Admin Login</h1>
+        <form id="admin-form">
+            <div class="form-group">
+                <label for="admin-username">Username</label>
+                <input type="text" id="admin-username" required>
+            </div>
+            <div class="form-group">
+                <label for="admin-password">Password</label>
+                <input type="password" id="admin-password" required>
+            </div>
+            <button type="submit" class="submit-btn">Login</button>
+            <button type="button" id="back-btn" class="submit-btn back-btn">Back to Main</button>
+        </form>
+        <div id="store-owner-registration" class="management-section" style="display: none;">
+            <button class="back-to-dashboard" id="back-from-registration">← Back to Dashboard</button>
+            <h2>Register New Store Owner</h2>
+            
+            <form id="store-owner-registration-form">
+                <div class="form-group">
+                    <label for="owner-name">Full Name</label>
+                    <input type="text" id="owner-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="owner-email">Email</label>
+                    <input type="email" id="owner-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="owner-username">Username</label>
+                    <input type="text" id="owner-username" required>
+                </div>
+                <div class="form-group">
+                    <label for="owner-password">Password</label>
+                    <input type="password" id="owner-password" required>
+                </div>
+                <div class="form-group">
+                    <label for="store-name">Store Name</label>
+                    <input type="text" id="store-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="store-description">Store Description</label>
+                    <textarea id="store-description" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Register</button>
+            </form>
+        </div>
+    </div>
+    
+
+    <script>
+        document.getElementById('admin-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const username = document.getElementById('admin-username').value;
+            const password = document.getElementById('admin-password').value;
+            
+            // Very basic validation (in real app, use secure server-side validation)
+            if (username === "admin" && password === "admin123") {
+                // Store admin login status
+                sessionStorage.setItem('adminLoggedIn', 'true');
+                // Redirect to admin portal
+                window.location.href = 'admin.html';
+            } else {
+                alert("Invalid admin credentials. Try admin/admin123 for demo purposes.");
+            }
+        });
+
+        document.getElementById('back-btn').addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+    </script>
+</body>
+</html>
