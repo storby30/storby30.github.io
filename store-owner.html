@@ -323,6 +323,8 @@
         // Menu Management Functions
         function renderMenuItems() {
             console.log('Rendering menu items...');
+            console.log('Current Owner:', currentOwner);
+            console.log('Canteen Stores:', canteenStores);
             const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
             const store = canteenStores.find(s => s.id === currentOwner.storeId);
 
