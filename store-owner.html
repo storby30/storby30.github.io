@@ -132,16 +132,19 @@
             border-radius: 4px;
             font-size: 0.8em;
             margin-left: 10px;
+            color: white;
         }
         
         .status-pending {
             background-color: #f39c12;
-            color: white;
+        }
+        
+        .status-ready {
+            background-color: #3498db;
         }
         
         .status-completed {
             background-color: #2ecc71;
-            color: white;
         }
         
         table {
@@ -159,6 +162,85 @@
         th {
             background-color: #f5f5f5;
         }
+        
+        /* Notification Styles */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .notification {
+            background-color: #2ecc71;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .notification-warning {
+            background-color: #f39c12;
+        }
+        
+        .notification-error {
+            background-color: #e74c3c;
+        }
+        
+        .notification-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0 0 0 10px;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Delivery Status Selector */
+        .delivery-status-selector {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .delivery-status-option {
+            flex: 1;
+        }
+        
+        .delivery-status-option input[type="radio"] {
+            display: none;
+        }
+        
+        .delivery-status-option label {
+            display: block;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .delivery-status-option input[type="radio"]:checked + label {
+            border-color: #3498db;
+            background-color: #eaf2f8;
+        }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
@@ -169,14 +251,15 @@
             <p id="store-description"></p>
             <p>Status: <span id="store-status"></span></p>
         </div>
-
+        
         <div class="tab-container">
             <div class="tab active" data-tab="store-edit">Store Settings</div>
             <div class="tab" data-tab="menu-management">Menu Management</div>
             <div class="tab" data-tab="order-queue">Order Queue</div>
             <div class="tab" data-tab="sales-reports">Sales Reports</div>
         </div>
-
+        
+        <!-- Store Edit Tab -->
         <div id="store-edit" class="tab-content active">
             <form id="store-info-form">
                 <div class="form-group">
@@ -199,23 +282,29 @@
                 <button type="submit" class="btn btn-primary">Save Changes</button>
             </form>
         </div>
-
+        
+        <!-- Menu Management Tab -->
         <div id="menu-management" class="tab-content">
             <div id="menu-items-container">
-                </div>
+                <!-- Menu items will be loaded here -->
+            </div>
             <button class="btn btn-success" id="add-new-item">+ Add New Menu Item</button>
         </div>
-
+        
+        <!-- Order Queue Tab -->
         <div id="order-queue" class="tab-content">
             <div id="orders-container">
-                </div>
+                <!-- Orders will be loaded here -->
+            </div>
         </div>
-
+        
+        <!-- Sales Reports Tab -->
         <div id="sales-reports" class="tab-content">
             <h3>Today's Sales</h3>
             <div id="sales-summary">
-                </div>
-
+                <!-- Sales summary will be loaded here -->
+            </div>
+            
             <h3>Recent Orders</h3>
             <table>
                 <thead>
@@ -228,12 +317,16 @@
                     </tr>
                 </thead>
                 <tbody id="sales-table-body">
-                    </tbody>
+                    <!-- Sales data will be loaded here -->
+                </tbody>
             </table>
         </div>
-
+        
         <button class="btn logout-btn" id="logout-btn">Logout</button>
     </div>
+
+    <!-- Notification Container -->
+    <div class="notification-container" id="notification-container"></div>
 
     <script>
         // Check if store owner is logged in
@@ -258,16 +351,17 @@
         const salesSummaryEl = document.getElementById('sales-summary');
         const salesTableBody = document.getElementById('sales-table-body');
         const logoutBtn = document.getElementById('logout-btn');
+        const notificationContainer = document.getElementById('notification-container');
 
         // Tab switching
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
                 tabs.forEach(t => t.classList.remove('active'));
                 tabContents.forEach(c => c.classList.remove('active'));
-
+                
                 tab.classList.add('active');
                 document.getElementById(tab.dataset.tab).classList.add('active');
-
+                
                 // Refresh data when switching to certain tabs
                 if (tab.dataset.tab === 'order-queue') {
                     loadOrders();
@@ -283,15 +377,15 @@
         function loadStoreInfo() {
             const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
             const store = canteenStores.find(s => s.id === currentOwner.storeId);
-
+            
             if (store) {
                 storeNameEl.textContent = store.name;
                 storeDescEl.textContent = store.description;
-                storeStatusEl.textContent =
+                storeStatusEl.textContent = 
                     store.status === 'open' ? 'Open' :
                     store.status === 'moderate' ? 'Moderately Busy' :
                     store.status === 'busy' ? 'Very Busy' : 'Closed';
-
+                
                 // Set form values
                 editStoreName.value = store.name;
                 editStoreDesc.value = store.description;
@@ -302,39 +396,36 @@
         // Save store info changes
         storeInfoForm.addEventListener('submit', (e) => {
             e.preventDefault();
-
+            
             const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
             const storeIndex = canteenStores.findIndex(s => s.id === currentOwner.storeId);
-
+            
             if (storeIndex === -1) return;
-
+            
             canteenStores[storeIndex] = {
                 ...canteenStores[storeIndex],
                 name: editStoreName.value,
                 description: editStoreDesc.value,
                 status: editStoreStatus.value
             };
-
+            
             localStorage.setItem('canteenStores', JSON.stringify(canteenStores));
             loadStoreInfo();
-            alert('Store information updated successfully!');
+            showNotification('Store information updated successfully!');
         });
 
         // Menu Management Functions
         function renderMenuItems() {
-            console.log('Rendering menu items...');
-            console.log('Current Owner:', currentOwner);
-            console.log('Canteen Stores:', canteenStores);
             const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
             const store = canteenStores.find(s => s.id === currentOwner.storeId);
-
+            
             menuContainer.innerHTML = '';
-
+            
             if (!store || !store.menu || store.menu.length === 0) {
                 menuContainer.innerHTML = '<p>No menu items yet. Add your first item!</p>';
                 return;
             }
-
+            
             store.menu.forEach(item => {
                 const menuItem = document.createElement('div');
                 menuItem.className = 'menu-item';
@@ -354,128 +445,2059 @@
                     <button class="btn btn-primary save-item" data-item-id="${item.id}">Save Changes</button>
                     <button class="btn btn-danger delete-item" data-item-id="${item.id}">Delete Item</button>
                 `;
-
+                
                 menuContainer.appendChild(menuItem);
             });
-
+            
             // Add event listeners after rendering all items
             document.querySelectorAll('.save-item').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const itemId = parseInt(e.target.dataset.itemId);
-                    console.log('Save button clicked for item ID:', itemId);
                     saveMenuItem(itemId);
                 });
             });
-
+            
             document.querySelectorAll('.delete-item').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const itemId = parseInt(e.target.dataset.itemId);
-                    console.log('Delete button clicked for item ID:', itemId);
                     deleteMenuItem(itemId);
                 });
             });
         }
 
         function saveMenuItem(itemId) {
-            console.log('Saving menu item with ID:', itemId);
             const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
             const storeIndex = canteenStores.findIndex(s => s.id === currentOwner.storeId);
-
-            if (storeIndex === -1) {
-                console.error('Store not found for owner:', currentOwner.storeId);
-                return;
-            }
-
+            
+            if (storeIndex === -1) return;
+            
             const itemIndex = canteenStores[storeIndex].menu.findIndex(item => item.id === itemId);
-            if (itemIndex === -1) {
-                console.error('Menu item not found with ID:', itemId, 'in store:', canteenStores[storeIndex]);
-                return;
-            }
-
+            if (itemIndex === -1) return;
+            
             // Find the menu item element by its ID
             const menuItemElement = document.querySelector(`.save-item[data-item-id="${itemId}"]`).closest('.menu-item');
-
-            if (!menuItemElement) {
-                console.error('Menu item element not found for ID:', itemId);
-                return;
-            }
-
+            
             canteenStores[storeIndex].menu[itemIndex] = {
                 id: itemId,
                 name: menuItemElement.querySelector('.item-name').value,
                 description: menuItemElement.querySelector('.item-desc').value,
                 price: parseFloat(menuItemElement.querySelector('.item-price').value)
             };
-
+            
             localStorage.setItem('canteenStores', JSON.stringify(canteenStores));
-            alert('Menu item updated successfully!');
+            showNotification('Menu item updated successfully!');
             renderMenuItems(); // Refresh the menu display
-            console.log('Menu item saved successfully:', canteenStores[storeIndex].menu[itemIndex]);
         }
 
         function deleteMenuItem(itemId) {
-            console.log('Deleting menu item with ID:', itemId);
             if (!confirm('Are you sure you want to delete this menu item?')) return;
-
+            
             const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
             const storeIndex = canteenStores.findIndex(s => s.id === currentOwner.storeId);
-
-            if (storeIndex === -1) {
-                console.error('Store not found for owner:', currentOwner.storeId);
-                return;
-            }
-
+            
+            if (storeIndex === -1) return;
+            
             canteenStores[storeIndex].menu = canteenStores[storeIndex].menu.filter(item => item.id !== itemId);
             localStorage.setItem('canteenStores', JSON.stringify(canteenStores));
             renderMenuItems();
-            console.log('Menu item deleted successfully. Updated menu:', canteenStores[storeIndex].menu);
         }
 
         addNewItemBtn.addEventListener('click', () => {
-            console.log('Add new item button clicked.');
             const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
             const storeIndex = canteenStores.findIndex(s => s.id === currentOwner.storeId);
-
-            if (storeIndex === -1) {
-                console.error('Store not found for owner:', currentOwner.storeId);
-                return;
-            }
-
+            
+            if (storeIndex === -1) return;
+            
             // Initialize menu array if it doesn't exist
             if (!canteenStores[storeIndex].menu) {
                 canteenStores[storeIndex].menu = [];
             }
-
-            const newId = canteenStores[storeIndex].menu.length > 0 ?
+            
+            const newId = canteenStores[storeIndex].menu.length > 0 ? 
                 Math.max(...canteenStores[storeIndex].menu.map(item => item.id)) + 1 : 1;
-
-            const newItem = {
+            
+            canteenStores[storeIndex].menu.push({
                 id: newId,
                 name: "New Item",
                 description: "Item description",
                 price: 0
-            };
-            canteenStores[storeIndex].menu.push(newItem);
-
+            });
+            
             localStorage.setItem('canteenStores', JSON.stringify(canteenStores));
             renderMenuItems();
-            console.log('New item added:', newItem, 'Updated menu:', canteenStores[storeIndex].menu);
         });
 
-        // Order Queue Functions (No changes here)
-        function loadOrders() { /* ... */ }
-        function renderOrder(order, isCompleted) { /* ... */ }
-        function completeOrder(orderId) { /* ... */ }
+        // Order Queue Functions
+        function loadOrders() {
+            const orders = JSON.parse(localStorage.getItem('studentOrders')) || [];
+            const storeOrders = orders.filter(order => 
+                order.items.some(item => item.storeId === currentOwner.storeId)
+            );
+            
+            ordersContainer.innerHTML = '';
+            
+            if (storeOrders.length === 0) {
+                ordersContainer.innerHTML = '<p>No orders yet.</p>';
+                return;
+            }
+            
+            // Show orders grouped by status
+            const pendingOrders = storeOrders.filter(order => order.status === 'pending');
+            const readyOrders = storeOrders.filter(order => 
+                order.status === 'ready-for-pickup' || order.status === 'out-for-delivery'
+            );
+            const completedOrders = storeOrders.filter(order => order.status === 'completed');
+            
+            if (pendingOrders.length > 0) {
+                ordersContainer.innerHTML += '<h3>Pending Orders</h3>';
+                pendingOrders.forEach(order => {
+                    renderOrder(order, 'pending');
+                });
+            }
+            
+            if (readyOrders.length > 0) {
+                ordersContainer.innerHTML += '<h3>Ready Orders</h3>';
+                readyOrders.forEach(order => {
+                    renderOrder(order, 'ready');
+                });
+            }
+            
+            if (completedOrders.length > 0) {
+                ordersContainer.innerHTML += '<h3>Completed Orders</h3>';
+                completedOrders.forEach(order => {
+                    renderOrder(order, 'completed');
+                });
+            }
+            
+            // Add event listeners to action buttons
+            document.querySelectorAll('.update-status-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const orderId = e.target.dataset.orderId;
+                    const newStatus = e.target.dataset.newStatus;
+                    updateOrderStatus(orderId, newStatus);
+                });
+            });
+        }
 
-        // Sales Reports Functions (No changes here)
-        function loadSalesData() { /* ... */ }
+        function renderOrder(order, statusType) {
+            const orderEl = document.createElement('div');
+            orderEl.className = 'order-item';
+            
+            let orderTotal = 0;
+            const orderItems = order.items.filter(item => item.storeId === currentOwner.storeId);
+            
+            const itemsList = orderItems.map(item => 
+                `${item.name} (x${item.quantity})`
+            ).join(', ');
+            
+            orderItems.forEach(item => {
+                orderTotal += item.price * item.quantity;
+            });
+            
+            // Format timestamp for display
+            const orderDate = new Date(order.timestamp);
+            const formattedDate = orderDate.toLocaleDateString();
+            const formattedTime = orderDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            // Determine status text and class
+            let statusText, statusClass, actionButtons = '';
+            
+            switch(statusType) {
+                case 'pending':
+                    statusText = 'Pending';
+                    statusClass = 'status-pending';
+                    actionButtons = `
+                        <div class="delivery-status-selector">
+                            <div class="delivery-status-option">
+                                <input type="radio" id="pickup-${order.timestamp}" 
+                                       name="delivery-${order.timestamp}" 
+                                       value="ready-for-pickup" checked>
+                                <label for="pickup-${order.timestamp}">Ready for Pickup</label>
+                            </div>
+                            ${order.deliveryMethod === 'deliver' ? `
+                            <div class="delivery-status-option">
+                                <input type="radio" id="delivery-${order.timestamp}" 
+                                       name="delivery-${order.timestamp}" 
+                                       value="out-for-delivery">
+                                <label for="delivery-${order.timestamp}">Out for Delivery</label>
+                            </div>
+                            ` : ''}
+                        </div>
+                        <button class="btn btn-success update-status-btn" 
+                                data-order-id="${order.timestamp}"
+                                data-new-status="ready-for-pickup">
+                            Update Status
+                        </button>
+                    `;
+                    break;
+                case 'ready':
+                    statusText = order.status === 'ready-for-pickup' ? 'Ready for Pickup' : 'Out for Delivery';
+                    statusClass = 'status-ready';
+                    actionButtons = `
+                        <button class="btn btn-success update-status-btn" 
+                                data-order-id="${order.timestamp}"
+                                data-new-status="completed">
+                            Mark as Completed
+                        </button>
+                    `;
+                    break;
+                case 'completed':
+                    statusText = 'Completed';
+                    statusClass = 'status-completed';
+                    break;
+            }
+            
+            orderEl.innerHTML = `
+                <h4>Order #${order.timestamp.substring(0, 10)}-${order.timestamp.substring(11, 19)} 
+                    <span class="order-status ${statusClass}">
+                        ${statusText}
+                    </span>
+                </h4>
+                <p><strong>Student:</strong> ${order.studentName} (${order.studentId})</p>
+                <p><strong>Delivery:</strong> ${order.deliveryMethod === 'deliver' ? order.address : 'Pick Up'}</p>
+                <p><strong>Items:</strong> ${itemsList}</p>
+                <p><strong>Total:</strong> ₱${orderTotal.toFixed(2)}</p>
+                <p><strong>Time:</strong> ${formattedDate} at ${formattedTime}</p>
+                ${order.notes ? `<p><strong>Notes:</strong> ${order.notes}</p>` : ''}
+                ${actionButtons}
+            `;
+            
+            ordersContainer.appendChild(orderEl);
+        }
 
-        // Logout (No changes here)
-        logoutBtn.addEventListener('click', () => { /* ... */ });
+        function updateOrderStatus(orderId, newStatus) {
+            const orders = JSON.parse(localStorage.getItem('studentOrders')) || [];
+            const orderIndex = orders.findIndex(o => o.timestamp === orderId);
+            
+            if (orderIndex === -1) return;
+            
+            // For pending orders, check which status was selected
+            if (newStatus === 'ready-for-pickup') {
+                const selectedStatus = document.querySelector(
+                    `input[name="delivery-${orderId}"]:checked`
+                )?.value || 'ready-for-pickup';
+                newStatus = selectedStatus;
+            }
+            
+            // Update the order status
+            orders[orderIndex].status = newStatus;
+            orders[orderIndex].lastUpdated = new Date().toISOString();
+            
+            // Reset notification flag if marking as ready/delivery
+            if (newStatus === 'ready-for-pickup' || newStatus === 'out-for-delivery') {
+                orders[orderIndex].notified = false;
+            }
+            
+            localStorage.setItem('studentOrders', JSON.stringify(orders));
+            
+            // Show confirmation message
+            let statusMessage = '';
+            switch(newStatus) {
+                case 'ready-for-pickup':
+                    statusMessage = 'Order marked as ready for pickup. Student has been notified.';
+                    break;
+                case 'out-for-delivery':
+                    statusMessage = 'Order marked as out for delivery. Student has been notified.';
+                    break;
+                case 'completed':
+                    statusMessage = 'Order marked as completed.';
+                    break;
+            }
+            
+            showNotification(statusMessage);
+            loadOrders(); // Refresh the orders display
+            
+            // Force update in student portal
+            localStorage.setItem('lastOrderUpdate', Date.now());
+        }
+
+        // Sales Reports Functions
+        function loadSalesData() {
+            const orders = JSON.parse(localStorage.getItem('studentOrders')) || [];
+            const storeOrders = orders.filter(order => 
+                order.items.some(item => item.storeId === currentOwner.storeId)
+            );
+            
+            // Calculate today's sales
+            const today = new Date().toISOString().substring(0, 10);
+            const todaySales = storeOrders
+                .filter(order => order.timestamp.startsWith(today))
+                .flatMap(order => 
+                    order.items.filter(item => item.storeId === currentOwner.storeId)
+                )
+                .reduce((total, item) => total + (item.price * item.quantity), 0);
+            
+            // Calculate total sales
+            const totalSales = storeOrders
+                .flatMap(order => 
+                    order.items.filter(item => item.storeId === currentOwner.storeId)
+                )
+                .reduce((total, item) => total + (item.price * item.quantity), 0);
+            
+            // Calculate order status counts
+            const pendingOrders = storeOrders.filter(order => order.status === 'pending').length;
+            const readyOrders = storeOrders.filter(order => 
+                order.status === 'ready-for-pickup' || order.status === 'out-for-delivery'
+            ).length;
+            const completedOrders = storeOrders.filter(order => order.status === 'completed').length;
+            
+            // Update sales summary
+            salesSummaryEl.innerHTML = `
+                <p><strong>Today's Sales:</strong> ₱${todaySales.toFixed(2)}</p>
+                <p><strong>Total Sales:</strong> ₱${totalSales.toFixed(2)}</p>
+                <p><strong>Pending Orders:</strong> ${pendingOrders}</p>
+                <p><strong>Ready Orders:</strong> ${readyOrders}</p>
+                <p><strong>Completed Orders:</strong> ${completedOrders}</p>
+            `;
+            
+            // Update sales table
+            salesTableBody.innerHTML = '';
+            
+            // Show last 10 orders
+            const recentOrders = [...storeOrders]
+                .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+                .slice(0, 10);
+            
+            recentOrders.forEach(order => {
+                const orderItems = order.items.filter(item => item.storeId === currentOwner.storeId);
+                const orderTotal = orderItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+                
+                let statusText, statusClass;
+                switch(order.status) {
+                    case 'pending':
+                        statusText = 'Pending';
+                        statusClass = 'status-pending';
+                        break;
+                    case 'ready-for-pickup':
+                        statusText = 'Ready for Pickup';
+                        statusClass = 'status-ready';
+                        break;
+                    case 'out-for-delivery':
+                        statusText = 'Out for Delivery';
+                        statusClass = 'status-ready';
+                        break;
+                    case 'completed':
+                        statusText = 'Completed';
+                        statusClass = 'status-completed';
+                        break;
+                }
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${order.timestamp.substring(0, 10)}-${order.timestamp.substring(11, 19)}</td>
+                    <td>${new Date(order.timestamp).toLocaleTimeString()}</td>
+                    <td>${orderItems.length} items</td>
+                    <td>₱${orderTotal.toFixed(2)}</td>
+                    <td>
+                        <span class="order-status ${statusClass}">
+                            ${statusText}
+                        </span>
+                    </td>
+                `;
+                salesTableBody.appendChild(row);
+            });
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type === 'success' ? '' : type === 'warning' ? 'notification-warning' : 'notification-error'}`;
+            notification.innerHTML = `
+                <div>${message}</div>
+                <button class="notification-close">&times;</button>
+            `;
+            
+            notificationContainer.appendChild(notification);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+            
+            // Close button
+            notification.querySelector('.notification-close').addEventListener('click', () => {
+                notification.remove();
+            });
+        }
+
+        // Logout
+        logoutBtn.addEventListener('click', () => {
+            sessionStorage.removeItem('currentStoreOwner');
+            window.location.href = 'index.html';
+        });
 
         // Initialize the page
         loadStoreInfo();
         renderMenuItems();
+        loadOrders();
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store Owner Portal</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .store-info {
+            background-color: #fff9e6;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 5px solid #f39c12;
+        }
+        
+        .tab-container {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+        }
+        
+        .tab.active {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .btn-success {
+            background-color: #2ecc71;
+            color: white;
+        }
+        
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .logout-btn {
+            background-color: #e74c3c;
+            color: white;
+            margin-top: 30px;
+        }
+        
+        .menu-item {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            border: 1px solid #eee;
+        }
+        
+        .order-item {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            border: 1px solid #eee;
+        }
+        
+        .order-status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-left: 10px;
+            color: white;
+        }
+        
+        .status-pending {
+            background-color: #f39c12;
+        }
+        
+        .status-ready {
+            background-color: #3498db;
+        }
+        
+        .status-completed {
+            background-color: #2ecc71;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: #f5f5f5;
+        }
+        
+        /* Notification Styles */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .notification {
+            background-color: #2ecc71;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .notification-warning {
+            background-color: #f39c12;
+        }
+        
+        .notification-error {
+            background-color: #e74c3c;
+        }
+        
+        .notification-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0 0 0 10px;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Delivery Status Selector */
+        .delivery-status-selector {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .delivery-status-option {
+            flex: 1;
+        }
+        
+        .delivery-status-option input[type="radio"] {
+            display: none;
+        }
+        
+        .delivery-status-option label {
+            display: block;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .delivery-status-option input[type="radio"]:checked + label {
+            border-color: #3498db;
+            background-color: #eaf2f8;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="store-info">
+            <h2 id="store-name">Your Store</h2>
+            <p id="store-description"></p>
+            <p>Status: <span id="store-status"></span></p>
+        </div>
+        
+        <div class="tab-container">
+            <div class="tab active" data-tab="store-edit">Store Settings</div>
+            <div class="tab" data-tab="menu-management">Menu Management</div>
+            <div class="tab" data-tab="order-queue">Order Queue</div>
+            <div class="tab" data-tab="sales-reports">Sales Reports</div>
+        </div>
+        
+        <!-- Store Edit Tab -->
+        <div id="store-edit" class="tab-content active">
+            <form id="store-info-form">
+                <div class="form-group">
+                    <label for="edit-store-name">Store Name</label>
+                    <input type="text" id="edit-store-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-store-desc">Description</label>
+                    <textarea id="edit-store-desc" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit-store-status">Status</label>
+                    <select id="edit-store-status">
+                        <option value="open">Open</option>
+                        <option value="moderate">Moderately Busy</option>
+                        <option value="busy">Very Busy</option>
+                        <option value="closed">Closed</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </form>
+        </div>
+        
+        <!-- Menu Management Tab -->
+        <div id="menu-management" class="tab-content">
+            <div id="menu-items-container">
+                <!-- Menu items will be loaded here -->
+            </div>
+            <button class="btn btn-success" id="add-new-item">+ Add New Menu Item</button>
+        </div>
+        
+        <!-- Order Queue Tab -->
+        <div id="order-queue" class="tab-content">
+            <div id="orders-container">
+                <!-- Orders will be loaded here -->
+            </div>
+        </div>
+        
+        <!-- Sales Reports Tab -->
+        <div id="sales-reports" class="tab-content">
+            <h3>Today's Sales</h3>
+            <div id="sales-summary">
+                <!-- Sales summary will be loaded here -->
+            </div>
+            
+            <h3>Recent Orders</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Time</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="sales-table-body">
+                    <!-- Sales data will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+        
+        <button class="btn logout-btn" id="logout-btn">Logout</button>
+    </div>
+
+    <!-- Notification Container -->
+    <div class="notification-container" id="notification-container"></div>
+
+    <script>
+        // Check if store owner is logged in
+        const currentOwner = JSON.parse(sessionStorage.getItem('currentStoreOwner'));
+        if (!currentOwner) {
+            window.location.href = 'store-owner-login.html';
+        }
+
+        // DOM Elements
+        const storeNameEl = document.getElementById('store-name');
+        const storeDescEl = document.getElementById('store-description');
+        const storeStatusEl = document.getElementById('store-status');
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const storeInfoForm = document.getElementById('store-info-form');
+        const editStoreName = document.getElementById('edit-store-name');
+        const editStoreDesc = document.getElementById('edit-store-desc');
+        const editStoreStatus = document.getElementById('edit-store-status');
+        const menuContainer = document.getElementById('menu-items-container');
+        const addNewItemBtn = document.getElementById('add-new-item');
+        const ordersContainer = document.getElementById('orders-container');
+        const salesSummaryEl = document.getElementById('sales-summary');
+        const salesTableBody = document.getElementById('sales-table-body');
+        const logoutBtn = document.getElementById('logout-btn');
+        const notificationContainer = document.getElementById('notification-container');
+
+        // Tab switching
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+                
+                // Refresh data when switching to certain tabs
+                if (tab.dataset.tab === 'order-queue') {
+                    loadOrders();
+                } else if (tab.dataset.tab === 'sales-reports') {
+                    loadSalesData();
+                } else if (tab.dataset.tab === 'menu-management') {
+                    renderMenuItems();
+                }
+            });
+        });
+
+        // Load store data
+        function loadStoreInfo() {
+            const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
+            const store = canteenStores.find(s => s.id === currentOwner.storeId);
+            
+            if (store) {
+                storeNameEl.textContent = store.name;
+                storeDescEl.textContent = store.description;
+                storeStatusEl.textContent = 
+                    store.status === 'open' ? 'Open' :
+                    store.status === 'moderate' ? 'Moderately Busy' :
+                    store.status === 'busy' ? 'Very Busy' : 'Closed';
+                
+                // Set form values
+                editStoreName.value = store.name;
+                editStoreDesc.value = store.description;
+                editStoreStatus.value = store.status || 'open';
+            }
+        }
+
+        // Save store info changes
+        storeInfoForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
+            const storeIndex = canteenStores.findIndex(s => s.id === currentOwner.storeId);
+            
+            if (storeIndex === -1) return;
+            
+            canteenStores[storeIndex] = {
+                ...canteenStores[storeIndex],
+                name: editStoreName.value,
+                description: editStoreDesc.value,
+                status: editStoreStatus.value
+            };
+            
+            localStorage.setItem('canteenStores', JSON.stringify(canteenStores));
+            loadStoreInfo();
+            showNotification('Store information updated successfully!');
+        });
+
+        // Menu Management Functions
+        function renderMenuItems() {
+            const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
+            const store = canteenStores.find(s => s.id === currentOwner.storeId);
+            
+            menuContainer.innerHTML = '';
+            
+            if (!store || !store.menu || store.menu.length === 0) {
+                menuContainer.innerHTML = '<p>No menu items yet. Add your first item!</p>';
+                return;
+            }
+            
+            store.menu.forEach(item => {
+                const menuItem = document.createElement('div');
+                menuItem.className = 'menu-item';
+                menuItem.innerHTML = `
+                    <div class="form-group">
+                        <label>Item Name</label>
+                        <input type="text" class="item-name" value="${item.name}">
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea class="item-desc">${item.description}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Price (₱)</label>
+                        <input type="number" class="item-price" value="${item.price}" step="0.01">
+                    </div>
+                    <button class="btn btn-primary save-item" data-item-id="${item.id}">Save Changes</button>
+                    <button class="btn btn-danger delete-item" data-item-id="${item.id}">Delete Item</button>
+                `;
+                
+                menuContainer.appendChild(menuItem);
+            });
+            
+            // Add event listeners after rendering all items
+            document.querySelectorAll('.save-item').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const itemId = parseInt(e.target.dataset.itemId);
+                    saveMenuItem(itemId);
+                });
+            });
+            
+            document.querySelectorAll('.delete-item').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const itemId = parseInt(e.target.dataset.itemId);
+                    deleteMenuItem(itemId);
+                });
+            });
+        }
+
+        function saveMenuItem(itemId) {
+            const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
+            const storeIndex = canteenStores.findIndex(s => s.id === currentOwner.storeId);
+            
+            if (storeIndex === -1) return;
+            
+            const itemIndex = canteenStores[storeIndex].menu.findIndex(item => item.id === itemId);
+            if (itemIndex === -1) return;
+            
+            // Find the menu item element by its ID
+            const menuItemElement = document.querySelector(`.save-item[data-item-id="${itemId}"]`).closest('.menu-item');
+            
+            canteenStores[storeIndex].menu[itemIndex] = {
+                id: itemId,
+                name: menuItemElement.querySelector('.item-name').value,
+                description: menuItemElement.querySelector('.item-desc').value,
+                price: parseFloat(menuItemElement.querySelector('.item-price').value)
+            };
+            
+            localStorage.setItem('canteenStores', JSON.stringify(canteenStores));
+            showNotification('Menu item updated successfully!');
+            renderMenuItems(); // Refresh the menu display
+        }
+
+        function deleteMenuItem(itemId) {
+            if (!confirm('Are you sure you want to delete this menu item?')) return;
+            
+            const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
+            const storeIndex = canteenStores.findIndex(s => s.id === currentOwner.storeId);
+            
+            if (storeIndex === -1) return;
+            
+            canteenStores[storeIndex].menu = canteenStores[storeIndex].menu.filter(item => item.id !== itemId);
+            localStorage.setItem('canteenStores', JSON.stringify(canteenStores));
+            renderMenuItems();
+        }
+
+        addNewItemBtn.addEventListener('click', () => {
+            const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
+            const storeIndex = canteenStores.findIndex(s => s.id === currentOwner.storeId);
+            
+            if (storeIndex === -1) return;
+            
+            // Initialize menu array if it doesn't exist
+            if (!canteenStores[storeIndex].menu) {
+                canteenStores[storeIndex].menu = [];
+            }
+            
+            const newId = canteenStores[storeIndex].menu.length > 0 ? 
+                Math.max(...canteenStores[storeIndex].menu.map(item => item.id)) + 1 : 1;
+            
+            canteenStores[storeIndex].menu.push({
+                id: newId,
+                name: "New Item",
+                description: "Item description",
+                price: 0
+            });
+            
+            localStorage.setItem('canteenStores', JSON.stringify(canteenStores));
+            renderMenuItems();
+        });
+
+        // Order Queue Functions
+        function loadOrders() {
+            const orders = JSON.parse(localStorage.getItem('studentOrders')) || [];
+            const storeOrders = orders.filter(order => 
+                order.items.some(item => item.storeId === currentOwner.storeId)
+            );
+            
+            ordersContainer.innerHTML = '';
+            
+            if (storeOrders.length === 0) {
+                ordersContainer.innerHTML = '<p>No orders yet.</p>';
+                return;
+            }
+            
+            // Show orders grouped by status
+            const pendingOrders = storeOrders.filter(order => order.status === 'pending');
+            const readyOrders = storeOrders.filter(order => 
+                order.status === 'ready-for-pickup' || order.status === 'out-for-delivery'
+            );
+            const completedOrders = storeOrders.filter(order => order.status === 'completed');
+            
+            if (pendingOrders.length > 0) {
+                ordersContainer.innerHTML += '<h3>Pending Orders</h3>';
+                pendingOrders.forEach(order => {
+                    renderOrder(order, 'pending');
+                });
+            }
+            
+            if (readyOrders.length > 0) {
+                ordersContainer.innerHTML += '<h3>Ready Orders</h3>';
+                readyOrders.forEach(order => {
+                    renderOrder(order, 'ready');
+                });
+            }
+            
+            if (completedOrders.length > 0) {
+                ordersContainer.innerHTML += '<h3>Completed Orders</h3>';
+                completedOrders.forEach(order => {
+                    renderOrder(order, 'completed');
+                });
+            }
+            
+            // Add event listeners to action buttons
+            document.querySelectorAll('.update-status-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const orderId = e.target.dataset.orderId;
+                    const newStatus = e.target.dataset.newStatus;
+                    updateOrderStatus(orderId, newStatus);
+                });
+            });
+        }
+
+        function renderOrder(order, statusType) {
+            const orderEl = document.createElement('div');
+            orderEl.className = 'order-item';
+            
+            let orderTotal = 0;
+            const orderItems = order.items.filter(item => item.storeId === currentOwner.storeId);
+            
+            const itemsList = orderItems.map(item => 
+                `${item.name} (x${item.quantity})`
+            ).join(', ');
+            
+            orderItems.forEach(item => {
+                orderTotal += item.price * item.quantity;
+            });
+            
+            // Format timestamp for display
+            const orderDate = new Date(order.timestamp);
+            const formattedDate = orderDate.toLocaleDateString();
+            const formattedTime = orderDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            // Determine status text and class
+            let statusText, statusClass, actionButtons = '';
+            
+            switch(statusType) {
+                case 'pending':
+                    statusText = 'Pending';
+                    statusClass = 'status-pending';
+                    actionButtons = `
+                        <div class="delivery-status-selector">
+                            <div class="delivery-status-option">
+                                <input type="radio" id="pickup-${order.timestamp}" 
+                                       name="delivery-${order.timestamp}" 
+                                       value="ready-for-pickup" checked>
+                                <label for="pickup-${order.timestamp}">Ready for Pickup</label>
+                            </div>
+                            ${order.deliveryMethod === 'deliver' ? `
+                            <div class="delivery-status-option">
+                                <input type="radio" id="delivery-${order.timestamp}" 
+                                       name="delivery-${order.timestamp}" 
+                                       value="out-for-delivery">
+                                <label for="delivery-${order.timestamp}">Out for Delivery</label>
+                            </div>
+                            ` : ''}
+                        </div>
+                        <button class="btn btn-success update-status-btn" 
+                                data-order-id="${order.timestamp}"
+                                data-new-status="ready-for-pickup">
+                            Update Status
+                        </button>
+                    `;
+                    break;
+                case 'ready':
+                    statusText = order.status === 'ready-for-pickup' ? 'Ready for Pickup' : 'Out for Delivery';
+                    statusClass = 'status-ready';
+                    actionButtons = `
+                        <button class="btn btn-success update-status-btn" 
+                                data-order-id="${order.timestamp}"
+                                data-new-status="completed">
+                            Mark as Completed
+                        </button>
+                    `;
+                    break;
+                case 'completed':
+                    statusText = 'Completed';
+                    statusClass = 'status-completed';
+                    break;
+            }
+            
+            orderEl.innerHTML = `
+                <h4>Order #${order.timestamp.substring(0, 10)}-${order.timestamp.substring(11, 19)} 
+                    <span class="order-status ${statusClass}">
+                        ${statusText}
+                    </span>
+                </h4>
+                <p><strong>Student:</strong> ${order.studentName} (${order.studentId})</p>
+                <p><strong>Delivery:</strong> ${order.deliveryMethod === 'deliver' ? order.address : 'Pick Up'}</p>
+                <p><strong>Items:</strong> ${itemsList}</p>
+                <p><strong>Total:</strong> ₱${orderTotal.toFixed(2)}</p>
+                <p><strong>Time:</strong> ${formattedDate} at ${formattedTime}</p>
+                ${order.notes ? `<p><strong>Notes:</strong> ${order.notes}</p>` : ''}
+                ${actionButtons}
+            `;
+            
+            ordersContainer.appendChild(orderEl);
+        }
+
+        function updateOrderStatus(orderId, newStatus) {
+            const orders = JSON.parse(localStorage.getItem('studentOrders')) || [];
+            const orderIndex = orders.findIndex(o => o.timestamp === orderId);
+            
+            if (orderIndex === -1) return;
+            
+            // For pending orders, check which status was selected
+            if (newStatus === 'ready-for-pickup') {
+                const selectedStatus = document.querySelector(
+                    `input[name="delivery-${orderId}"]:checked`
+                )?.value || 'ready-for-pickup';
+                newStatus = selectedStatus;
+            }
+            
+            // Update the order status
+            orders[orderIndex].status = newStatus;
+            orders[orderIndex].lastUpdated = new Date().toISOString();
+            
+            // Reset notification flag if marking as ready/delivery
+            if (newStatus === 'ready-for-pickup' || newStatus === 'out-for-delivery') {
+                orders[orderIndex].notified = false;
+            }
+            
+            localStorage.setItem('studentOrders', JSON.stringify(orders));
+            
+            // Show confirmation message
+            let statusMessage = '';
+            switch(newStatus) {
+                case 'ready-for-pickup':
+                    statusMessage = 'Order marked as ready for pickup. Student has been notified.';
+                    break;
+                case 'out-for-delivery':
+                    statusMessage = 'Order marked as out for delivery. Student has been notified.';
+                    break;
+                case 'completed':
+                    statusMessage = 'Order marked as completed.';
+                    break;
+            }
+            
+            showNotification(statusMessage);
+            loadOrders(); // Refresh the orders display
+            
+            // Force update in student portal
+            localStorage.setItem('lastOrderUpdate', Date.now());
+        }
+
+        // Sales Reports Functions
+        function loadSalesData() {
+            const orders = JSON.parse(localStorage.getItem('studentOrders')) || [];
+            const storeOrders = orders.filter(order => 
+                order.items.some(item => item.storeId === currentOwner.storeId)
+            );
+            
+            // Calculate today's sales
+            const today = new Date().toISOString().substring(0, 10);
+            const todaySales = storeOrders
+                .filter(order => order.timestamp.startsWith(today))
+                .flatMap(order => 
+                    order.items.filter(item => item.storeId === currentOwner.storeId)
+                )
+                .reduce((total, item) => total + (item.price * item.quantity), 0);
+            
+            // Calculate total sales
+            const totalSales = storeOrders
+                .flatMap(order => 
+                    order.items.filter(item => item.storeId === currentOwner.storeId)
+                )
+                .reduce((total, item) => total + (item.price * item.quantity), 0);
+            
+            // Calculate order status counts
+            const pendingOrders = storeOrders.filter(order => order.status === 'pending').length;
+            const readyOrders = storeOrders.filter(order => 
+                order.status === 'ready-for-pickup' || order.status === 'out-for-delivery'
+            ).length;
+            const completedOrders = storeOrders.filter(order => order.status === 'completed').length;
+            
+            // Update sales summary
+            salesSummaryEl.innerHTML = `
+                <p><strong>Today's Sales:</strong> ₱${todaySales.toFixed(2)}</p>
+                <p><strong>Total Sales:</strong> ₱${totalSales.toFixed(2)}</p>
+                <p><strong>Pending Orders:</strong> ${pendingOrders}</p>
+                <p><strong>Ready Orders:</strong> ${readyOrders}</p>
+                <p><strong>Completed Orders:</strong> ${completedOrders}</p>
+            `;
+            
+            // Update sales table
+            salesTableBody.innerHTML = '';
+            
+            // Show last 10 orders
+            const recentOrders = [...storeOrders]
+                .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+                .slice(0, 10);
+            
+            recentOrders.forEach(order => {
+                const orderItems = order.items.filter(item => item.storeId === currentOwner.storeId);
+                const orderTotal = orderItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+                
+                let statusText, statusClass;
+                switch(order.status) {
+                    case 'pending':
+                        statusText = 'Pending';
+                        statusClass = 'status-pending';
+                        break;
+                    case 'ready-for-pickup':
+                        statusText = 'Ready for Pickup';
+                        statusClass = 'status-ready';
+                        break;
+                    case 'out-for-delivery':
+                        statusText = 'Out for Delivery';
+                        statusClass = 'status-ready';
+                        break;
+                    case 'completed':
+                        statusText = 'Completed';
+                        statusClass = 'status-completed';
+                        break;
+                }
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${order.timestamp.substring(0, 10)}-${order.timestamp.substring(11, 19)}</td>
+                    <td>${new Date(order.timestamp).toLocaleTimeString()}</td>
+                    <td>${orderItems.length} items</td>
+                    <td>₱${orderTotal.toFixed(2)}</td>
+                    <td>
+                        <span class="order-status ${statusClass}">
+                            ${statusText}
+                        </span>
+                    </td>
+                `;
+                salesTableBody.appendChild(row);
+            });
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type === 'success' ? '' : type === 'warning' ? 'notification-warning' : 'notification-error'}`;
+            notification.innerHTML = `
+                <div>${message}</div>
+                <button class="notification-close">&times;</button>
+            `;
+            
+            notificationContainer.appendChild(notification);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+            
+            // Close button
+            notification.querySelector('.notification-close').addEventListener('click', () => {
+                notification.remove();
+            });
+        }
+
+        // Logout
+        logoutBtn.addEventListener('click', () => {
+            sessionStorage.removeItem('currentStoreOwner');
+            window.location.href = 'index.html';
+        });
+
+        // Initialize the page
+        loadStoreInfo();
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store Owner Portal</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .store-info {
+            background-color: #fff9e6;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 5px solid #f39c12;
+        }
+        
+        .tab-container {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+        }
+        
+        .tab.active {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .btn-success {
+            background-color: #2ecc71;
+            color: white;
+        }
+        
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .logout-btn {
+            background-color: #e74c3c;
+            color: white;
+            margin-top: 30px;
+        }
+        
+        .menu-item {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            border: 1px solid #eee;
+        }
+        
+        .order-item {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            border: 1px solid #eee;
+        }
+        
+        .order-status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-left: 10px;
+            color: white;
+        }
+        
+        .status-pending {
+            background-color: #f39c12;
+        }
+        
+        .status-ready {
+            background-color: #3498db;
+        }
+        
+        .status-completed {
+            background-color: #2ecc71;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: #f5f5f5;
+        }
+        
+        /* Notification Styles */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .notification {
+            background-color: #2ecc71;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .notification-warning {
+            background-color: #f39c12;
+        }
+        
+        .notification-error {
+            background-color: #e74c3c;
+        }
+        
+        .notification-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0 0 0 10px;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Delivery Status Selector */
+        .delivery-status-selector {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .delivery-status-option {
+            flex: 1;
+        }
+        
+        .delivery-status-option input[type="radio"] {
+            display: none;
+        }
+        
+        .delivery-status-option label {
+            display: block;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .delivery-status-option input[type="radio"]:checked + label {
+            border-color: #3498db;
+            background-color: #eaf2f8;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="store-info">
+            <h2 id="store-name">Your Store</h2>
+            <p id="store-description"></p>
+            <p>Status: <span id="store-status"></span></p>
+        </div>
+        
+        <div class="tab-container">
+            <div class="tab active" data-tab="store-edit">Store Settings</div>
+            <div class="tab" data-tab="menu-management">Menu Management</div>
+            <div class="tab" data-tab="order-queue">Order Queue</div>
+            <div class="tab" data-tab="sales-reports">Sales Reports</div>
+        </div>
+        
+        <!-- Store Edit Tab -->
+        <div id="store-edit" class="tab-content active">
+            <form id="store-info-form">
+                <div class="form-group">
+                    <label for="edit-store-name">Store Name</label>
+                    <input type="text" id="edit-store-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-store-desc">Description</label>
+                    <textarea id="edit-store-desc" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit-store-status">Status</label>
+                    <select id="edit-store-status">
+                        <option value="open">Open</option>
+                        <option value="moderate">Moderately Busy</option>
+                        <option value="busy">Very Busy</option>
+                        <option value="closed">Closed</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </form>
+        </div>
+        
+        <!-- Menu Management Tab -->
+        <div id="menu-management" class="tab-content">
+            <div id="menu-items-container">
+                <!-- Menu items will be loaded here -->
+            </div>
+            <button class="btn btn-success" id="add-new-item">+ Add New Menu Item</button>
+        </div>
+        
+        <!-- Order Queue Tab -->
+        <div id="order-queue" class="tab-content">
+            <div id="orders-container">
+                <!-- Orders will be loaded here -->
+            </div>
+        </div>
+        
+        <!-- Sales Reports Tab -->
+        <div id="sales-reports" class="tab-content">
+            <h3>Today's Sales</h3>
+            <div id="sales-summary">
+                <!-- Sales summary will be loaded here -->
+            </div>
+            
+            <h3>Recent Orders</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Time</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="sales-table-body">
+                    <!-- Sales data will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+        
+        <button class="btn logout-btn" id="logout-btn">Logout</button>
+    </div>
+
+    <!-- Notification Container -->
+    <div class="notification-container" id="notification-container"></div>
+
+    <script>
+        // Check if store owner is logged in
+        const currentOwner = JSON.parse(sessionStorage.getItem('currentStoreOwner'));
+        if (!currentOwner) {
+            window.location.href = 'store-owner-login.html';
+        }
+
+        // DOM Elements
+        const storeNameEl = document.getElementById('store-name');
+        const storeDescEl = document.getElementById('store-description');
+        const storeStatusEl = document.getElementById('store-status');
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const storeInfoForm = document.getElementById('store-info-form');
+        const editStoreName = document.getElementById('edit-store-name');
+        const editStoreDesc = document.getElementById('edit-store-desc');
+        const editStoreStatus = document.getElementById('edit-store-status');
+        const menuContainer = document.getElementById('menu-items-container');
+        const addNewItemBtn = document.getElementById('add-new-item');
+        const ordersContainer = document.getElementById('orders-container');
+        const salesSummaryEl = document.getElementById('sales-summary');
+        const salesTableBody = document.getElementById('sales-table-body');
+        const logoutBtn = document.getElementById('logout-btn');
+        const notificationContainer = document.getElementById('notification-container');
+
+        // Tab switching
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+                
+                // Refresh data when switching to certain tabs
+                if (tab.dataset.tab === 'order-queue') {
+                    loadOrders();
+                } else if (tab.dataset.tab === 'sales-reports') {
+                    loadSalesData();
+                } else if (tab.dataset.tab === 'menu-management') {
+                    renderMenuItems();
+                }
+            });
+        });
+
+        // Load store data
+        function loadStoreInfo() {
+            const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
+            const store = canteenStores.find(s => s.id === currentOwner.storeId);
+            
+            if (store) {
+                storeNameEl.textContent = store.name;
+                storeDescEl.textContent = store.description;
+                storeStatusEl.textContent = 
+                    store.status === 'open' ? 'Open' :
+                    store.status === 'moderate' ? 'Moderately Busy' :
+                    store.status === 'busy' ? 'Very Busy' : 'Closed';
+                
+                // Set form values
+                editStoreName.value = store.name;
+                editStoreDesc.value = store.description;
+                editStoreStatus.value = store.status || 'open';
+            }
+        }
+
+        // Save store info changes
+        storeInfoForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
+            const storeIndex = canteenStores.findIndex(s => s.id === currentOwner.storeId);
+            
+            if (storeIndex === -1) return;
+            
+            canteenStores[storeIndex] = {
+                ...canteenStores[storeIndex],
+                name: editStoreName.value,
+                description: editStoreDesc.value,
+                status: editStoreStatus.value
+            };
+            
+            localStorage.setItem('canteenStores', JSON.stringify(canteenStores));
+            loadStoreInfo();
+            showNotification('Store information updated successfully!');
+        });
+
+        // Menu Management Functions
+        function renderMenuItems() {
+            const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
+            const store = canteenStores.find(s => s.id === currentOwner.storeId);
+            
+            menuContainer.innerHTML = '';
+            
+            if (!store || !store.menu || store.menu.length === 0) {
+                menuContainer.innerHTML = '<p>No menu items yet. Add your first item!</p>';
+                return;
+            }
+            
+            store.menu.forEach(item => {
+                const menuItem = document.createElement('div');
+                menuItem.className = 'menu-item';
+                menuItem.innerHTML = `
+                    <div class="form-group">
+                        <label>Item Name</label>
+                        <input type="text" class="item-name" value="${item.name}">
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea class="item-desc">${item.description}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Price (₱)</label>
+                        <input type="number" class="item-price" value="${item.price}" step="0.01">
+                    </div>
+                    <button class="btn btn-primary save-item" data-item-id="${item.id}">Save Changes</button>
+                    <button class="btn btn-danger delete-item" data-item-id="${item.id}">Delete Item</button>
+                `;
+                
+                menuContainer.appendChild(menuItem);
+            });
+            
+            // Add event listeners after rendering all items
+            document.querySelectorAll('.save-item').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const itemId = parseInt(e.target.dataset.itemId);
+                    saveMenuItem(itemId);
+                });
+            });
+            
+            document.querySelectorAll('.delete-item').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const itemId = parseInt(e.target.dataset.itemId);
+                    deleteMenuItem(itemId);
+                });
+            });
+        }
+
+        function saveMenuItem(itemId) {
+            const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
+            const storeIndex = canteenStores.findIndex(s => s.id === currentOwner.storeId);
+            
+            if (storeIndex === -1) return;
+            
+            const itemIndex = canteenStores[storeIndex].menu.findIndex(item => item.id === itemId);
+            if (itemIndex === -1) return;
+            
+            // Find the menu item element by its ID
+            const menuItemElement = document.querySelector(`.save-item[data-item-id="${itemId}"]`).closest('.menu-item');
+            
+            canteenStores[storeIndex].menu[itemIndex] = {
+                id: itemId,
+                name: menuItemElement.querySelector('.item-name').value,
+                description: menuItemElement.querySelector('.item-desc').value,
+                price: parseFloat(menuItemElement.querySelector('.item-price').value)
+            };
+            
+            localStorage.setItem('canteenStores', JSON.stringify(canteenStores));
+            showNotification('Menu item updated successfully!');
+            renderMenuItems(); // Refresh the menu display
+        }
+
+        function deleteMenuItem(itemId) {
+            if (!confirm('Are you sure you want to delete this menu item?')) return;
+            
+            const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
+            const storeIndex = canteenStores.findIndex(s => s.id === currentOwner.storeId);
+            
+            if (storeIndex === -1) return;
+            
+            canteenStores[storeIndex].menu = canteenStores[storeIndex].menu.filter(item => item.id !== itemId);
+            localStorage.setItem('canteenStores', JSON.stringify(canteenStores));
+            renderMenuItems();
+        }
+
+        addNewItemBtn.addEventListener('click', () => {
+            const canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
+            const storeIndex = canteenStores.findIndex(s => s.id === currentOwner.storeId);
+            
+            if (storeIndex === -1) return;
+            
+            // Initialize menu array if it doesn't exist
+            if (!canteenStores[storeIndex].menu) {
+                canteenStores[storeIndex].menu = [];
+            }
+            
+            const newId = canteenStores[storeIndex].menu.length > 0 ? 
+                Math.max(...canteenStores[storeIndex].menu.map(item => item.id)) + 1 : 1;
+            
+            canteenStores[storeIndex].menu.push({
+                id: newId,
+                name: "New Item",
+                description: "Item description",
+                price: 0
+            });
+            
+            localStorage.setItem('canteenStores', JSON.stringify(canteenStores));
+            renderMenuItems();
+        });
+
+        // Order Queue Functions
+        function loadOrders() {
+            const orders = JSON.parse(localStorage.getItem('studentOrders')) || [];
+            const storeOrders = orders.filter(order => 
+                order.items.some(item => item.storeId === currentOwner.storeId)
+            );
+            
+            ordersContainer.innerHTML = '';
+            
+            if (storeOrders.length === 0) {
+                ordersContainer.innerHTML = '<p>No orders yet.</p>';
+                return;
+            }
+            
+            // Show orders grouped by status
+            const pendingOrders = storeOrders.filter(order => order.status === 'pending');
+            const readyOrders = storeOrders.filter(order => 
+                order.status === 'ready-for-pickup' || order.status === 'out-for-delivery'
+            );
+            const completedOrders = storeOrders.filter(order => order.status === 'completed');
+            
+            if (pendingOrders.length > 0) {
+                ordersContainer.innerHTML += '<h3>Pending Orders</h3>';
+                pendingOrders.forEach(order => {
+                    renderOrder(order, 'pending');
+                });
+            }
+            
+            if (readyOrders.length > 0) {
+                ordersContainer.innerHTML += '<h3>Ready Orders</h3>';
+                readyOrders.forEach(order => {
+                    renderOrder(order, 'ready');
+                });
+            }
+            
+            if (completedOrders.length > 0) {
+                ordersContainer.innerHTML += '<h3>Completed Orders</h3>';
+                completedOrders.forEach(order => {
+                    renderOrder(order, 'completed');
+                });
+            }
+            
+            // Add event listeners to action buttons
+            document.querySelectorAll('.update-status-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const orderId = e.target.dataset.orderId;
+                    const newStatus = e.target.dataset.newStatus;
+                    updateOrderStatus(orderId, newStatus);
+                });
+            });
+        }
+
+        function renderOrder(order, statusType) {
+            const orderEl = document.createElement('div');
+            orderEl.className = 'order-item';
+            
+            let orderTotal = 0;
+            const orderItems = order.items.filter(item => item.storeId === currentOwner.storeId);
+            
+            const itemsList = orderItems.map(item => 
+                `${item.name} (x${item.quantity})`
+            ).join(', ');
+            
+            orderItems.forEach(item => {
+                orderTotal += item.price * item.quantity;
+            });
+            
+            // Format timestamp for display
+            const orderDate = new Date(order.timestamp);
+            const formattedDate = orderDate.toLocaleDateString();
+            const formattedTime = orderDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            // Determine status text and class
+            let statusText, statusClass, actionButtons = '';
+            
+            switch(statusType) {
+                case 'pending':
+                    statusText = 'Pending';
+                    statusClass = 'status-pending';
+                    actionButtons = `
+                        <div class="delivery-status-selector">
+                            <div class="delivery-status-option">
+                                <input type="radio" id="pickup-${order.timestamp}" 
+                                       name="delivery-${order.timestamp}" 
+                                       value="ready-for-pickup" checked>
+                                <label for="pickup-${order.timestamp}">Ready for Pickup</label>
+                            </div>
+                            ${order.deliveryMethod === 'deliver' ? `
+                            <div class="delivery-status-option">
+                                <input type="radio" id="delivery-${order.timestamp}" 
+                                       name="delivery-${order.timestamp}" 
+                                       value="out-for-delivery">
+                                <label for="delivery-${order.timestamp}">Out for Delivery</label>
+                            </div>
+                            ` : ''}
+                        </div>
+                        <button class="btn btn-success update-status-btn" 
+                                data-order-id="${order.timestamp}"
+                                data-new-status="ready-for-pickup">
+                            Update Status
+                        </button>
+                    `;
+                    break;
+                case 'ready':
+                    statusText = order.status === 'ready-for-pickup' ? 'Ready for Pickup' : 'Out for Delivery';
+                    statusClass = 'status-ready';
+                    actionButtons = `
+                        <button class="btn btn-success update-status-btn" 
+                                data-order-id="${order.timestamp}"
+                                data-new-status="completed">
+                            Mark as Completed
+                        </button>
+                    `;
+                    break;
+                case 'completed':
+                    statusText = 'Completed';
+                    statusClass = 'status-completed';
+                    break;
+            }
+            
+            orderEl.innerHTML = `
+                <h4>Order #${order.timestamp.substring(0, 10)}-${order.timestamp.substring(11, 19)} 
+                    <span class="order-status ${statusClass}">
+                        ${statusText}
+                    </span>
+                </h4>
+                <p><strong>Student:</strong> ${order.studentName} (${order.studentId})</p>
+                <p><strong>Delivery:</strong> ${order.deliveryMethod === 'deliver' ? order.address : 'Pick Up'}</p>
+                <p><strong>Items:</strong> ${itemsList}</p>
+                <p><strong>Total:</strong> ₱${orderTotal.toFixed(2)}</p>
+                <p><strong>Time:</strong> ${formattedDate} at ${formattedTime}</p>
+                ${order.notes ? `<p><strong>Notes:</strong> ${order.notes}</p>` : ''}
+                ${actionButtons}
+            `;
+            
+            ordersContainer.appendChild(orderEl);
+        }
+
+        function updateOrderStatus(orderId, newStatus) {
+            const orders = JSON.parse(localStorage.getItem('studentOrders')) || [];
+            const orderIndex = orders.findIndex(o => o.timestamp === orderId);
+            
+            if (orderIndex === -1) return;
+            
+            // For pending orders, check which status was selected
+            if (newStatus === 'ready-for-pickup') {
+                const selectedStatus = document.querySelector(
+                    `input[name="delivery-${orderId}"]:checked`
+                )?.value || 'ready-for-pickup';
+                newStatus = selectedStatus;
+            }
+            
+            // Update the order status
+            orders[orderIndex].status = newStatus;
+            orders[orderIndex].lastUpdated = new Date().toISOString();
+            
+            // Reset notification flag if marking as ready/delivery
+            if (newStatus === 'ready-for-pickup' || newStatus === 'out-for-delivery') {
+                orders[orderIndex].notified = false;
+            }
+            
+            localStorage.setItem('studentOrders', JSON.stringify(orders));
+            
+            // Show confirmation message
+            let statusMessage = '';
+            switch(newStatus) {
+                case 'ready-for-pickup':
+                    statusMessage = 'Order marked as ready for pickup. Student has been notified.';
+                    break;
+                case 'out-for-delivery':
+                    statusMessage = 'Order marked as out for delivery. Student has been notified.';
+                    break;
+                case 'completed':
+                    statusMessage = 'Order marked as completed.';
+                    break;
+            }
+            
+            showNotification(statusMessage);
+            loadOrders(); // Refresh the orders display
+            
+            // Force update in student portal
+            localStorage.setItem('lastOrderUpdate', Date.now());
+        }
+
+        // Sales Reports Functions
+        function loadSalesData() {
+            const orders = JSON.parse(localStorage.getItem('studentOrders')) || [];
+            const storeOrders = orders.filter(order => 
+                order.items.some(item => item.storeId === currentOwner.storeId)
+            );
+            
+            // Calculate today's sales
+            const today = new Date().toISOString().substring(0, 10);
+            const todaySales = storeOrders
+                .filter(order => order.timestamp.startsWith(today))
+                .flatMap(order => 
+                    order.items.filter(item => item.storeId === currentOwner.storeId)
+                )
+                .reduce((total, item) => total + (item.price * item.quantity), 0);
+            
+            // Calculate total sales
+            const totalSales = storeOrders
+                .flatMap(order => 
+                    order.items.filter(item => item.storeId === currentOwner.storeId)
+                )
+                .reduce((total, item) => total + (item.price * item.quantity), 0);
+            
+            // Calculate order status counts
+            const pendingOrders = storeOrders.filter(order => order.status === 'pending').length;
+            const readyOrders = storeOrders.filter(order => 
+                order.status === 'ready-for-pickup' || order.status === 'out-for-delivery'
+            ).length;
+            const completedOrders = storeOrders.filter(order => order.status === 'completed').length;
+            
+            // Update sales summary
+            salesSummaryEl.innerHTML = `
+                <p><strong>Today's Sales:</strong> ₱${todaySales.toFixed(2)}</p>
+                <p><strong>Total Sales:</strong> ₱${totalSales.toFixed(2)}</p>
+                <p><strong>Pending Orders:</strong> ${pendingOrders}</p>
+                <p><strong>Ready Orders:</strong> ${readyOrders}</p>
+                <p><strong>Completed Orders:</strong> ${completedOrders}</p>
+            `;
+            
+            // Update sales table
+            salesTableBody.innerHTML = '';
+            
+            // Show last 10 orders
+            const recentOrders = [...storeOrders]
+                .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+                .slice(0, 10);
+            
+            recentOrders.forEach(order => {
+                const orderItems = order.items.filter(item => item.storeId === currentOwner.storeId);
+                const orderTotal = orderItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+                
+                let statusText, statusClass;
+                switch(order.status) {
+                    case 'pending':
+                        statusText = 'Pending';
+                        statusClass = 'status-pending';
+                        break;
+                    case 'ready-for-pickup':
+                        statusText = 'Ready for Pickup';
+                        statusClass = 'status-ready';
+                        break;
+                    case 'out-for-delivery':
+                        statusText = 'Out for Delivery';
+                        statusClass = 'status-ready';
+                        break;
+                    case 'completed':
+                        statusText = 'Completed';
+                        statusClass = 'status-completed';
+                        break;
+                }
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${order.timestamp.substring(0, 10)}-${order.timestamp.substring(11, 19)}</td>
+                    <td>${new Date(order.timestamp).toLocaleTimeString()}</td>
+                    <td>${orderItems.length} items</td>
+                    <td>₱${orderTotal.toFixed(2)}</td>
+                    <td>
+                        <span class="order-status ${statusClass}">
+                            ${statusText}
+                        </span>
+                    </td>
+                `;
+                salesTableBody.appendChild(row);
+            });
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type === 'success' ? '' : type === 'warning' ? 'notification-warning' : 'notification-error'}`;
+            notification.innerHTML = `
+                <div>${message}</div>
+                <button class="notification-close">&times;</button>
+            `;
+            
+            notificationContainer.appendChild(notification);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+            
+            // Close button
+            notification.querySelector('.notification-close').addEventListener('click', () => {
+                notification.remove();
+            });
+        }
+
+        // Logout
+        logoutBtn.addEventListener('click', () => {
+            sessionStorage.removeItem('currentStoreOwner');
+            window.location.href = 'index.html';
+        });
+
+        // Initialize the page
+        loadStoreInfo();
+        renderMenuItems();
+        loadOrders();
+    </script>
+</body>
+</html>        renderMenuItems();
+        loadOrders();
     </script>
 </body>
 </html>
