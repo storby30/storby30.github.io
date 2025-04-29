@@ -26,11 +26,6 @@
             margin: 20px auto;
         }
         
-        h1, h2, h3 {
-            color: #333;
-            text-align: center;
-        }
-        
         .user-info {
             background-color: #f9f9f9;
             padding: 15px;
@@ -178,6 +173,40 @@
             background-color: #2980b9;
         }
         
+        /* Order Status Styles */
+        .order-list {
+            margin-top: 30px;
+        }
+        
+        .order-item {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            border: 1px solid #eee;
+        }
+        
+        .order-status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: white;
+        }
+        
+        .status-pending {
+            background-color: #f39c12;
+        }
+        
+        .status-ready {
+            background-color: #3498db;
+        }
+        
+        .status-completed {
+            background-color: #2ecc71;
+        }
+        
         /* Cart Styles */
         .cart-container {
             position: fixed;
@@ -191,7 +220,6 @@
             z-index: 1000;
             max-height: 80vh;
             overflow-y: auto;
-            transition: all 0.3s ease;
         }
         
         .cart-header {
@@ -213,15 +241,23 @@
             display: block;
         }
         
+        .cart-collapsed {
+            width: 40px;
+            height: 40px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 5px;
+        }
+        
         .cart-collapsed .cart-content {
             display: none;
         }
         
-        .cart-collapsed {
-            width: 40px;
-            height: 40px;
-            padding: 5px;
-            overflow: hidden;
+        .cart-collapsed .cart-toggle {
+            font-size: 1.5rem;
+            color: #3498db;
         }
         
         .cart-item {
@@ -274,7 +310,56 @@
             cursor: pointer;
         }
         
-        /* Checkout Modal */
+        /* Notification Styles */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .notification {
+            background-color: #2ecc71;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .notification-warning {
+            background-color: #f39c12;
+        }
+        
+        .notification-error {
+            background-color: #e74c3c;
+        }
+        
+        .notification-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0 0 0 10px;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Modal Styles */
         .modal {
             display: none;
             position: fixed;
@@ -430,6 +515,11 @@
             </div>
         </div>
         
+        <div class="order-list" id="order-list">
+            <h2>Your Orders</h2>
+            <!-- Orders will be dynamically inserted here -->
+        </div>
+        
         <div style="text-align: center;">
             <button class="logout-btn" id="student-logout-btn">Logout</button>
         </div>
@@ -502,6 +592,9 @@
         </div>
     </div>
 
+    <!-- Notification Container -->
+    <div class="notification-container" id="notification-container"></div>
+
     <script>
         // Get stores from localStorage or initialize with default
         let canteenStores = JSON.parse(localStorage.getItem('canteenStores')) || [];
@@ -562,6 +655,7 @@
         const backToStoresBtn = document.getElementById('back-to-stores');
         const menuStoreName = document.getElementById('menu-store-name');
         const menuItems = document.getElementById('menu-items');
+        const orderList = document.getElementById('order-list');
         
         // Cart Elements
         const cartContainer = document.getElementById('cart-container');
@@ -581,6 +675,9 @@
         const paymentMethods = document.querySelectorAll('input[name="payment"]');
         const specialNotes = document.getElementById('special-notes');
         
+        // Notification Elements
+        const notificationContainer = document.getElementById('notification-container');
+        
         // Current selected store
         let selectedStoreId = null;
         let cart = JSON.parse(sessionStorage.getItem('studentCart')) || [];
@@ -590,6 +687,14 @@
         studentDisplayName.textContent = localStorage.getItem('studentName') || "Student";
         studentDisplaySection.textContent = localStorage.getItem('studentSection') || "N/A";
         studentDisplayId.textContent = localStorage.getItem('studentId') || "N/A";
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            renderStores();
+            renderOrders();
+            setupOrderTracking();
+            updateCart();
+        });
 
         // Render canteen stores
         function renderStores() {
@@ -662,6 +767,11 @@
         function renderMenuItems(store) {
             menuItems.innerHTML = '';
             
+            if (!store.menu || store.menu.length === 0) {
+                menuItems.innerHTML = '<p>No menu items available.</p>';
+                return;
+            }
+            
             store.menu.forEach(item => {
                 const menuItem = document.createElement('div');
                 menuItem.className = 'menu-item';
@@ -704,6 +814,7 @@
             } else {
                 cart.push({
                     storeId,
+                    storeName: store.name,
                     itemId,
                     name: menuItem.name,
                     price: menuItem.price,
@@ -712,7 +823,7 @@
             }
             
             updateCart();
-            alert(`${menuItem.name} added to cart!`);
+            showNotification(`${menuItem.name} added to cart!`);
             
             // Ensure cart is visible when adding items
             if (isCartCollapsed) {
@@ -791,8 +902,121 @@
             }
         }
 
+        // Render orders
+        function renderOrders() {
+            const orders = JSON.parse(localStorage.getItem('studentOrders')) || [];
+            const myOrders = orders.filter(order => 
+                order.studentId === localStorage.getItem('studentId')
+            ).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            const ordersContainer = document.createElement('div');
+            
+            if (myOrders.length === 0) {
+                ordersContainer.innerHTML = '<p>No orders placed yet.</p>';
+            } else {
+                myOrders.forEach(order => {
+                    const orderItems = order.items.map(item => 
+                        `${item.name} (x${item.quantity})`
+                    ).join(', ');
+                    
+                    const orderTotal = order.items.reduce(
+                        (total, item) => total + (item.price * item.quantity), 0
+                    );
+                    
+                    const orderDate = new Date(order.timestamp);
+                    const formattedDate = orderDate.toLocaleDateString();
+                    const formattedTime = orderDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
+                    const orderElement = document.createElement('div');
+                    orderElement.className = 'order-item';
+                    orderElement.dataset.orderId = order.timestamp;
+                    orderElement.innerHTML = `
+                        <h4>Order #${order.timestamp.substring(0, 10)}-${order.timestamp.substring(11, 19)}</h4>
+                        <p>Status: <span class="order-status ${getStatusClass(order.status)}">
+                            ${getStatusText(order.status)}
+                        </span></p>
+                        <p>Placed on: ${formattedDate} at ${formattedTime}</p>
+                        <p>From: ${[...new Set(order.items.map(item => item.storeName))].join(', ')}</p>
+                        <p>Items: ${orderItems}</p>
+                        <p>Total: ₱${orderTotal.toFixed(2)}</p>
+                        <p>Payment: ${order.paymentMethod} | Delivery: ${
+                            order.deliveryMethod === 'deliver' ? order.address : 'Pick Up'
+                        }</p>
+                        ${order.notes ? `<p>Notes: ${order.notes}</p>` : ''}
+                    `;
+                    ordersContainer.appendChild(orderElement);
+                });
+            }
+            
+            // Replace existing orders
+            const existingContainer = orderList.querySelector('div');
+            if (existingContainer) {
+                orderList.replaceChild(ordersContainer, existingContainer);
+            } else {
+                orderList.appendChild(ordersContainer);
+            }
+        }
+
+        // Order status tracking
+        function setupOrderTracking() {
+            // Check for status updates periodically
+            setInterval(checkOrderStatusUpdates, 5000);
+            
+            // Also listen for storage changes
+            window.addEventListener('storage', function(event) {
+                if (event.key === 'studentOrders' || event.key === 'lastOrderUpdate') {
+                    checkOrderStatusUpdates();
+                }
+            });
+        }
+
+        function checkOrderStatusUpdates() {
+            const orders = JSON.parse(localStorage.getItem('studentOrders')) || [];
+            const myOrders = orders.filter(order => 
+                order.studentId === localStorage.getItem('studentId')
+            );
+            
+            myOrders.forEach(order => {
+                // Check for status changes that need notification
+                if (order.status === 'ready-for-pickup' && !order.notified) {
+                    showNotification(`Your order is ready for pickup!`, 'warning');
+                    order.notified = true;
+                    localStorage.setItem('studentOrders', JSON.stringify(orders));
+                }
+                else if (order.status === 'out-for-delivery' && !order.notified) {
+                    showNotification(`Your order is out for delivery!`, 'warning');
+                    order.notified = true;
+                    localStorage.setItem('studentOrders', JSON.stringify(orders));
+                }
+            });
+            
+            // Update the display
+            renderOrders();
+        }
+
+        // Helper functions for status display
+        function getStatusText(status) {
+            return {
+                'ready-for-pickup': 'Ready for Pickup',
+                'out-for-delivery': 'Out for Delivery',
+                'completed': 'Completed'
+            }[status] || 'Preparing';
+        }
+
+        function getStatusClass(status) {
+            return {
+                'completed': 'status-completed',
+                'ready-for-pickup': 'status-ready',
+                'out-for-delivery': 'status-ready'
+            }[status] || 'status-pending';
+        }
+
         // Show checkout modal
         function showCheckoutModal() {
+            if (cart.length === 0) {
+                showNotification('Your cart is empty!', 'error');
+                return;
+            }
             checkoutModal.style.display = 'flex';
         }
 
@@ -804,7 +1028,7 @@
         // Checkout function
         function processCheckout() {
             if (cart.length === 0) {
-                alert('Your cart is empty!');
+                showNotification('Your cart is empty!', 'error');
                 return;
             }
             
@@ -813,21 +1037,22 @@
             const notes = specialNotes.value;
             const address = deliveryMethod === 'deliver' ? deliveryAddress.value : 'Pick Up';
             
-            // In a real app, this would send to a server
+            // Create order
             const orderDetails = {
                 studentName: localStorage.getItem('studentName'),
                 studentId: localStorage.getItem('studentId'),
-                items: cart,
-                total: parseFloat(document.getElementById('cart-total').textContent),
+                items: [...cart], // Copy cart items
+                total: parseFloat(cartTotalEl.textContent),
                 deliveryMethod,
                 paymentMethod,
                 address,
                 notes,
                 status: 'pending',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                notified: false
             };
             
-            // Save order to localStorage (for demo)
+            // Save order to localStorage
             const orders = JSON.parse(localStorage.getItem('studentOrders')) || [];
             orders.push(orderDetails);
             localStorage.setItem('studentOrders', JSON.stringify(orders));
@@ -838,7 +1063,32 @@
             updateCart();
             
             hideCheckoutModal();
-            alert(`Order placed successfully!\nTotal: ₱${orderDetails.total.toFixed(2)}\nPayment: ${orderDetails.paymentMethod}\nDelivery: ${orderDetails.deliveryMethod}`);
+            showNotification(`Order placed successfully!\nTotal: ₱${orderDetails.total.toFixed(2)}\nPayment: ${orderDetails.paymentMethod}\nDelivery: ${orderDetails.deliveryMethod}`);
+            
+            // Update order display
+            renderOrders();
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type === 'success' ? '' : type === 'warning' ? 'notification-warning' : 'notification-error'}`;
+            notification.innerHTML = `
+                <div>${message}</div>
+                <button class="notification-close">&times;</button>
+            `;
+            
+            notificationContainer.appendChild(notification);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+            
+            // Close button
+            notification.querySelector('.notification-close').addEventListener('click', () => {
+                notification.remove();
+            });
         }
 
         // Back to stores view
@@ -878,10 +1128,6 @@
                 }
             });
         });
-
-        // Initialize the page
-        renderStores();
-        updateCart();
 
         // Simulate changing serving counts (for demo purposes)
         setInterval(() => {
